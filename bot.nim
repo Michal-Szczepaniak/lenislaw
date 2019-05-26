@@ -77,12 +77,19 @@ proc getVideoByCommand(c: string): string =
 proc removeVideoCommand(c: string) =
   db.exec(sql"DELETE FROM commands_videos WHERE command = ?", c)
 
+proc setAudioCommand(c, f: string) =
+  db.exec(sql"INSERT INTO commands_audios (command, audio) VALUES (?,?)", c, f)
+proc getAudioByCommand(c: string): string =
+  result = db.getValue(sql"SELECT audio FROM commands_audios WHERE command = ?", c)
+proc removeAudioCommand(c: string) =
+  db.exec(sql"DELETE FROM commands_audios WHERE command = ?", c)
+
 proc addAdmin(id:int) =
   db.exec(sql"INSERT INTO admins (user_id) VALUES (?)", id)
 proc removeAdmin(id:int) =
   db.exec(sql"DELETE FROM admins WHERE user_id = ?", id)
 proc isAdmin(id:int): bool =
-  result = db.getValue(sql"SELECT id FROM admins WHERE user_id = ?", id) != ""  
+  result = db.getValue(sql"SELECT id FROM admins WHERE user_id = ?", id) != ""
 
 proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
   var commandText = command.command
@@ -96,12 +103,12 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
             if getStickerByCommand(command.params) == "":
               setStickerCommand(command.params, command.message.replyToMessage.get.sticker.get.fileId)
               discard await bot.send(newMessage(chatId, "dodano sticker"))
-        
+
           if command.message.replyToMessage.get.document.isSome:
             if getFileByCommand(command.params) == "":
               setFileCommand(command.params, command.message.replyToMessage.get.document.get.fileId)
               discard await bot.send(newMessage(chatId, "dodano plik"))
-        
+
           if command.message.replyToMessage.get.photo.isSome:
             if getPhotoByCommand(command.params) == "":
               setPhotoCommand(command.params, command.message.replyToMessage.get.photo.get[0].fileId)
@@ -116,6 +123,11 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
             if getVideoByCommand(command.params) == "":
               setVideoCommand(command.params, command.message.replyToMessage.get.video.get.fileId)
               discard await bot.send(newMessage(chatId, "dodano video"))
+
+          if command.message.replyToMessage.get.audio.isSome:
+            if getAudioByCommand(command.params) == "":
+              setAudioCommand(command.params, command.message.replyToMessage.get.audio.get.fileId)
+            discard await bot.send(newMessage(chatId, "dodano audio"))
         else:
           discard await bot.send(newMessage(chatId, jokes.sample))
 
@@ -142,6 +154,11 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
       of "removeVideo":
         if command.params != "":
           removeVideoCommand(command.params)
+        else:
+          discard await bot.send(newMessage(chatId, jokes.sample))
+      of "removeAudio":
+        if command.params != "":
+          removeAudioCommand(command.params)
         else:
           discard await bot.send(newMessage(chatId, jokes.sample))
 
@@ -198,6 +215,16 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
       message.replyToMessageId = command.message.replyToMessage.get.messageId
     discard await bot.send(message)
 
+  var audio = getAudioByCommand(commandText)
+  if audio != "":
+    var message = newAudio(chatId, audio)
+    if command.message.replyToMessage.isSome:
+      message.replyToMessageId = command.message.replyToMessage.get.messageId
+    discard await bot.send(message)
+
+  if commandText == "yomomma":
+    discard await bot.send(newMessage(chatId, jokes.sample))
+
   if commandText == "help":
     discard await bot.send(newMessage(chatId, """
 /addAdmin - dodaj admina
@@ -211,6 +238,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 /removePhoto - usun komende obrazek
 /removeVoice - usun komende voice
 /removeVideo - usun komende film
+/removeAudio - usun komende audio
 
 napisz inba a sie ztriggeruje
       """))
@@ -236,6 +264,10 @@ napisz inba a sie ztriggeruje
     for command in db.fastRows(sql"select command from commands_videos"):
       message &= command[0] & "\n"
 
+    message &= "\nAudio\n"
+    for command in db.fastRows(sql"select command from commands_audios"):
+      message &= command[0] & "\n"
+
     discard await bot.send(newMessage(chatId, message))
 
 proc updateHandler(b: Telebot, u: Update) {.async.} =
@@ -248,6 +280,14 @@ proc updateHandler(b: Telebot, u: Update) {.async.} =
       var document = newVoice(u.message.get.chat.id, this_file)
       document.caption = "🎉 INBA"
       discard await b.send(document)
+
+    if response.text.isSome and (" Xd" in response.text.get or response.text.get.startsWith("Xd ") or response.text.get == "Xd"):
+      var message = newMessage(u.message.get.chat.id, """
+Serio, mało rzeczy mnie triggeruje tak jak to chore „Xd”. Kombinacji x i d można używać na wiele wspaniałych sposobów. Coś cię śmieszy? Stawiasz „xD”. Coś się bardzo śmieszy? Śmiało: „XD”! Coś doprowadza Cię do płaczu ze śmiechu? „XDDD” i załatwione. Uśmiechniesz się pod nosem? „xd”. Po kłopocie.
+A co ma do tego ten bękart klawiaturowej ewolucji, potwór i zakała ludzkiej estetyki - „Xd”? Co to w ogóle ma wyrażać? Martwego człowieka z wywalonym jęzorem? Powiem Ci, co to znaczy. To znaczy, że masz w telefonie włączone zaczynanie zdań dużą literą, ale szkoda Ci klikać capsa na jedno „d” później. Korona z głowy spadnie? Nie sondze. „Xd” to symptom tego, że masz mnie, jako rozmówcę, gdzieś, bo Ci się nawet kliknąć nie chce, żeby mi wysłać poprawny emotikon. Szanujesz mnie? Używaj „xd”, „xD”, „XD”, do wyboru. Nie szanujesz mnie? Okaż to. Wystarczy, że wstawisz to zjebane „Xd” w choć jednej wiadomości. Nie pozdrawiam
+""")
+      message.replyToMessageId = response.messageId
+      discard await b.send(message)
 
 setupDatabase()
 randomize()
