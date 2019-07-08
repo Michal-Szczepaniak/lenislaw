@@ -316,6 +316,16 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
       discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
       removeFile($command.message.messageId)
 
+    of "tvp4":
+      discard execShellCmd("convert tvp4.png -font \"Roboto-Bold.ttf\" -pointsize 37 -fill \"#dcdce5\" -draw \"text 195,488 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
+      discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
+      removeFile($command.message.messageId)
+
+    of "tvp5":
+      discard execShellCmd("convert tvp5.png -font \"Roboto-Bold.ttf\" -pointsize 37 -fill \"#dcdce5\" -draw \"text 195,488 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
+      discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
+      removeFile($command.message.messageId)
+
     of "mi8":
       if command.message.replyToMessage.isSome and command.message.replyToMessage.get.photo.isSome:
         let
