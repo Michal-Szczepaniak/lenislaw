@@ -1,4 +1,4 @@
-import telebot, asyncdispatch, logging, options, os, strutils, db_sqlite, random, strformat, httpclient, json, osproc, math
+import telebot, asyncdispatch, logging, options, os, strutils, db_sqlite, random, strformat, httpclient, json, osproc, math, asynchttpserver, emerald
 
 const API_KEY = slurp("secret.key").strip()
 const USER_ID = 412515181
@@ -45,6 +45,15 @@ proc setupDatabase() =
   db.exec(sql("""CREATE TABLE IF NOT EXISTS admins (
               id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
               user_id INTEGER NOT NULL)
+            """))
+  db.exec(sql("""CREATE TABLE IF NOT EXISTS features_whitelist (
+              id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
+              feature varchar(2) NOT NULL,
+              chat INT NOT NULL)
+            """))
+  db.exec(sql("""CREATE TABLE IF NOT EXISTS statistics_chats (
+              id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
+              chat_name varchar(255))
             """))
 
 proc setFileCommand(c, f: string) =
@@ -103,27 +112,61 @@ proc removeAdmin(id:int) =
 proc isAdmin(id:int): bool =
   result = db.getValue(sql"SELECT id FROM admins WHERE user_id = ?", id) != ""
 
-proc downloadImage(image: PhotoSize): Future[string] {.async.} =
+proc addFeatureToWhitelist(feature:string, chatId:int64) =
+  db.exec(sql"INSERT INTO features_whitelist (feature,chat) VALUES (?,?)", feature, chatId)
+proc removeFeatureFromWhitelist(feature:string, chatId:int64) =
+  db.exec(sql"DELETE FROM features_whitelist WHERE feature = ? AND chat = ?", feature, chatId)
+proc isFeatureEnabled(feature:string, chatId:int64): bool =
+  result = db.getValue(sql"SELECT id FROM features_whitelist WHERE feature = ? AND chat = ?", feature, chatId) != ""
+
+proc addChatToStatistics(chatId:int64, chatName:string) =
+  try:
+    db.exec(sql"INSERT INTO statistics_chats (id,chat_name) VALUES (?,?)", chatId, chatName)
+  except:
+    discard 
+proc getChatsCount(): string =
+  return db.getValue(sql"SELECT count(id) FROM statistics_chats;")
+
+proc downloadImage(document: PhotoSize): Future[string] {.async.} =
   let
     url_getfile = fmt"https://api.telegram.org/bot{API_KEY}/getFile?file_id="
     api_file = fmt"https://api.telegram.org/file/bot{API_KEY}/"
-    file_id = image.fileId
+    file_id = document.fileId
     responz = await newAsyncHttpClient().get(url_getfile & file_id) # file_id > file_path
     responz_body = await responz.body
     file_path = parseJson(responz_body)["result"]["file_path"].getStr()
     responx = await newAsyncHttpClient().get(api_file & file_path)  # file_path > file
     file_content = await responx.body
-    fileName = "tmp" & image.fileId
+    fileName = "tmp" & document.fileId
+
+proc downloadDocument(document: Document): Future[string] {.async.} =
+  let
+    url_getfile = fmt"https://api.telegram.org/bot{API_KEY}/getFile?file_id="
+    api_file = fmt"https://api.telegram.org/file/bot{API_KEY}/"
+    file_id = document.fileId
+    responz = await newAsyncHttpClient().get(url_getfile & file_id) # file_id > file_path
+    responz_body = await responz.body
+    file_path = parseJson(responz_body)["result"]["file_path"].getStr()
+    responx = await newAsyncHttpClient().get(api_file & file_path)  # file_path > file
+    file_content = await responx.body
+    fileName = "tmp" & document.fileId
 
   # debugEcho(url_getfile & file_id)
   writeFile(fileName, file_content)
   return fileName
 
-proc deleteMessageEx(b: Telebot, chatId: int64, messageId: int) {.async.} =
-  # try:
-    # discard deleteMessage(b, $chatId, messageId)
-  # except IOError:
-    # discard
+proc canBotDelete*(b: TeleBot, m: Message): Future[bool] {.async.} =
+    let bot = await b.getMe()
+    let botChat = await getChatMember(b, $m.chat.id.int, bot.id)
+    if botChat.canDeleteMessages.isSome:
+        return botChat.canDeleteMessages.get
+
+proc deleteMessageEx(b: Telebot, chat: Chat, message: Message) {.async.} =
+  if await b.canBotDelete(message):
+    try:
+      discard await b.deleteMessage($chat.id, message.messageId)
+    except IOError:
+      discard
   discard
 
 proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
@@ -171,74 +214,89 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
         else:
           discard await bot.send(newMessage(chatId, jokes.sample))
 
-        discard deleteMessageEx(bot, chatId, command.message.messageId)
+        discard deleteMessageEx(bot, command.message.chat, command.message)
 
       of "removeFile":
-        discard deleteMessageEx(bot, chatId, command.message.messageId)
+        discard deleteMessageEx(bot, command.message.chat, command.message)
         if command.params != "":
           removeFileCommand(command.params)
         else:
           discard await bot.send(newMessage(chatId, jokes.sample))
       of "removeSticker":
-        discard deleteMessageEx(bot, chatId, command.message.messageId)
+        discard deleteMessageEx(bot, command.message.chat, command.message)
         if command.params != "":
           removeStickerCommand(command.params)
         else:
           discard await bot.send(newMessage(chatId, jokes.sample))
       of "removePhoto":
-        discard deleteMessageEx(bot, chatId, command.message.messageId)
+        discard deleteMessageEx(bot, command.message.chat, command.message)
         if command.params != "":
           removePhotoCommand(command.params)
         else:
           discard await bot.send(newMessage(chatId, jokes.sample))
       of "removeVoice":
-        discard deleteMessageEx(bot, chatId, command.message.messageId)
+        discard deleteMessageEx(bot, command.message.chat, command.message)
         if command.params != "":
           removeVoiceCommand(command.params)
         else:
           discard await bot.send(newMessage(chatId, jokes.sample))
       of "removeVideo":
-        discard deleteMessageEx(bot, chatId, command.message.messageId)
+        discard deleteMessageEx(bot, command.message.chat, command.message)
         if command.params != "":
           removeVideoCommand(command.params)
         else:
           discard await bot.send(newMessage(chatId, jokes.sample))
       of "removeAudio":
-        discard deleteMessageEx(bot, chatId, command.message.messageId)
+        discard deleteMessageEx(bot, command.message.chat, command.message)
         if command.params != "":
           removeAudioCommand(command.params)
         else:
           discard await bot.send(newMessage(chatId, jokes.sample))
       of "removeTekst":
-        discard deleteMessageEx(bot, chatId, command.message.messageId)
+        discard deleteMessageEx(bot, command.message.chat, command.message)
         if command.params != "":
           removeTextCommand(command.params)
         else:
           discard await bot.send(newMessage(chatId, jokes.sample))
 
       of "addAdmin":
-        discard deleteMessageEx(bot, chatId, command.message.messageId)
+        discard deleteMessageEx(bot, command.message.chat, command.message)
         if command.message.replyToMessage.isSome and command.message.replyToMessage.get.fromUser.isSome:
           if not isAdmin(command.message.replyToMessage.get.fromUser.get.id):
             addAdmin(command.message.replyToMessage.get.fromUser.get.id)
         else:
           discard await bot.send(newMessage(chatId, jokes.sample))
+
+      of "whitelist":
+        discard deleteMessageEx(bot, command.message.chat, command.message)
+        if not isFeatureEnabled(command.params, command.message.chat.id):
+          addFeatureToWhitelist(command.params, command.message.chat.id)
+        else:
+          discard await bot.send(newMessage(chatId, jokes.sample))
+
+      of "unwhitelist":
+        discard deleteMessageEx(bot, command.message.chat, command.message)
+        if isFeatureEnabled(command.params, command.message.chat.id):
+          removeFeatureFromWhitelist(command.params, command.message.chat.id)
+        else:
+          discard await bot.send(newMessage(chatId, jokes.sample))
+
       of "removeAdmin":
-        discard deleteMessageEx(bot, chatId, command.message.messageId)
+        discard deleteMessageEx(bot, command.message.chat, command.message)
         if command.message.replyToMessage.isSome and command.message.replyToMessage.get.fromUser.isSome:
           if isAdmin(command.message.replyToMessage.get.fromUser.get.id):
             removeAdmin(command.message.replyToMessage.get.fromUser.get.id)
         else:
           discard await bot.send(newMessage(chatId, jokes.sample))
       of "amIAdmin":
-        discard deleteMessageEx(bot, chatId, command.message.messageId)
+        discard deleteMessageEx(bot, command.message.chat, command.message)
         var message = newMessage(chatId, "yep")
         message.disableNotification = true
         discard await bot.send(message)
 
   var file = getFileByCommand(commandText)
   if file != "":
-    discard deleteMessageEx(bot, chatId, command.message.messageId)
+    discard deleteMessageEx(bot, command.message.chat, command.message)
     var message = newDocument(chatId, file)
     if command.message.replyToMessage.isSome:
       message.replyToMessageId = command.message.replyToMessage.get.messageId
@@ -247,7 +305,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
   var sticker = getStickerByCommand(commandText)
   if sticker != "":
-    discard deleteMessageEx(bot, chatId, command.message.messageId)
+    discard deleteMessageEx(bot, command.message.chat, command.message)
     var message = newSticker(chatId, sticker)
     if command.message.replyToMessage.isSome:
       message.replyToMessageId = command.message.replyToMessage.get.messageId
@@ -255,7 +313,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
   var photo = getPhotoByCommand(commandText)
   if photo != "":
-    discard deleteMessageEx(bot, chatId, command.message.messageId)
+    discard deleteMessageEx(bot, command.message.chat, command.message)
     var message = newPhoto(chatId, photo)
     if command.message.replyToMessage.isSome:
       message.replyToMessageId = command.message.replyToMessage.get.messageId
@@ -263,7 +321,8 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
   var voice = getVoiceByCommand(commandText)
   if voice != "":
-    discard deleteMessageEx(bot, chatId, command.message.messageId)
+    discard deleteMessageEx(bot, command.message.chat, command.message)
+    debugEcho voice
     var message = newVoice(chatId, voice)
     if command.message.replyToMessage.isSome:
       message.replyToMessageId = command.message.replyToMessage.get.messageId
@@ -271,7 +330,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
   var video = getVideoByCommand(commandText)
   if video != "":
-    discard deleteMessageEx(bot, chatId, command.message.messageId)
+    discard deleteMessageEx(bot, command.message.chat, command.message)
     var message = newVideo(chatId, video)
     if command.message.replyToMessage.isSome:
       message.replyToMessageId = command.message.replyToMessage.get.messageId
@@ -279,7 +338,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
   var audio = getAudioByCommand(commandText)
   if audio != "":
-    discard deleteMessageEx(bot, chatId, command.message.messageId)
+    discard deleteMessageEx(bot, command.message.chat, command.message)
     debugEcho audio
     var message = newAudio(chatId, audio)
     if command.message.replyToMessage.isSome:
@@ -288,7 +347,8 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
   var text = getTextByCommand(commandText)
   if text != "":
-    discard deleteMessageEx(bot, chatId, command.message.messageId)
+    discard deleteMessageEx(bot, command.message.chat, command.message)
+    debugEcho text
     var message = newMessage(chatId, text)
     if command.message.replyToMessage.isSome:
       message.replyToMessageId = command.message.replyToMessage.get.messageId
@@ -297,37 +357,45 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
   case commandText:
     of "pis":
+      discard deleteMessageEx(bot, command.message.chat, command.message)
       discard execShellCmd("convert PiS.png -font \"font.ttf\" -pointsize 81 -fill white -draw \"text 190,410 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
       discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
       removeFile($command.message.messageId)
 
     of "tvp1":
+      discard deleteMessageEx(bot, command.message.chat, command.message)
       discard execShellCmd("convert tvp.png -font \"font.ttf\" -pointsize 34 -fill white -draw \"text 142,356 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
       discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
       removeFile($command.message.messageId)
 
     of "tvp2":
+      discard deleteMessageEx(bot, command.message.chat, command.message)
       discard execShellCmd("convert tvp2.png -font \"font.ttf\" -pointsize 34 -fill white -draw \"text 142,356 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
       discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
       removeFile($command.message.messageId)
 
     of "tvp3":
+      discard deleteMessageEx(bot, command.message.chat, command.message)
       discard execShellCmd("convert tvp3.png -font \"font.ttf\" -pointsize 34 -fill white -draw \"text 142,356 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
       discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
       removeFile($command.message.messageId)
 
     of "tvp4":
+      discard deleteMessageEx(bot, command.message.chat, command.message)
       discard execShellCmd("convert tvp4.png -font \"Roboto-Bold.ttf\" -pointsize 37 -fill \"#dcdce5\" -draw \"text 195,488 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
       discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
       removeFile($command.message.messageId)
 
     of "tvp5":
+      discard deleteMessageEx(bot, command.message.chat, command.message)
       discard execShellCmd("convert tvp5.png -font \"Roboto-Bold.ttf\" -pointsize 37 -fill \"#dcdce5\" -draw \"text 195,488 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
       discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
       removeFile($command.message.messageId)
 
     of "mi8":
       if command.message.replyToMessage.isSome and command.message.replyToMessage.get.photo.isSome:
+        discard deleteMessageEx(bot, command.message.chat, command.message)
+
         let
           size = command.message.replyToMessage.get.photo.get[^1].width/3
           fileName = await downloadImage(command.message.replyToMessage.get.photo.get[^1])
@@ -339,6 +407,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
     of "mi9":
       if command.message.replyToMessage.isSome and command.message.replyToMessage.get.photo.isSome:
+        discard deleteMessageEx(bot, command.message.chat, command.message)
         let
           size = command.message.replyToMessage.get.photo.get[^1].width/3
           fileName = await downloadImage(command.message.replyToMessage.get.photo.get[^1])
@@ -350,6 +419,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
     of "snap":
       if command.message.replyToMessage.isSome and command.message.replyToMessage.get.photo.isSome:
+        discard deleteMessageEx(bot, command.message.chat, command.message)
         let
           width = command.message.replyToMessage.get.photo.get[^1].width
           height = command.message.replyToMessage.get.photo.get[^1].height
@@ -362,6 +432,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
     of "snapbot":
       if command.message.replyToMessage.isSome and command.message.replyToMessage.get.photo.isSome:
+        discard deleteMessageEx(bot, command.message.chat, command.message)
         let
           width = command.message.replyToMessage.get.photo.get[^1].width
           height = command.message.replyToMessage.get.photo.get[^1].height
@@ -374,6 +445,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
     of "snaptop":
       if command.message.replyToMessage.isSome and command.message.replyToMessage.get.photo.isSome:
+        discard deleteMessageEx(bot, command.message.chat, command.message)
         let
           width = command.message.replyToMessage.get.photo.get[^1].width
           height = command.message.replyToMessage.get.photo.get[^1].height
@@ -385,11 +457,11 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
         removeFile(fileName)
 
     of "yomomma":
-      discard deleteMessageEx(bot, chatId, command.message.messageId)
+      discard deleteMessageEx(bot, command.message.chat, command.message)
       discard await bot.send(newMessage(chatId, jokes.sample))
 
     of "help":
-      discard deleteMessageEx(bot, chatId, command.message.messageId)
+      discard deleteMessageEx(bot, command.message.chat, command.message)
       discard await bot.send(newMessage(chatId, """
 /addAdmin - dodaj admina
 /amIAdmin - czy jestem adminem
@@ -409,7 +481,7 @@ napisz inba a sie ztriggeruje
       """))
 
     of "getCommands":
-      discard deleteMessageEx(bot, chatId, command.message.messageId)
+      discard deleteMessageEx(bot, command.message.chat, command.message)
 
       var message = "Pliki\n"
       for command in db.fastRows(sql"select command from commands_files"):
@@ -520,23 +592,67 @@ proc updateHandler(b: Telebot, u: Update) {.async.} =
   if u.message.isSome:
     var response = u.message.get
 
-    if response.text.isSome and "inba" in response.text.get:
+    addChatToStatistics(response.chat.id, response.chat.title.get)
+
+    if response.document.isSome and response.document.get.mimeType.isSome and response.document.get.mimeType.get == "video/webm" and isFeatureEnabled("webm", response.chat.id):
+        let
+          fileName = await downloadDocument(response.document.get)
+
+        discard execShellCmd("ffmpeg -i  " & fileName & " " & $response.messageId & ".mp4")
+        discard await b.send(newVideo(u.message.get.chat.id, "file://" & getCurrentDir() & "/" & $response.messageId & ".mp4"))
+        removeFile($response.messageId & ".mp4")
+        removeFile(fileName)
+
+    if response.text.isSome and "inba" in response.text.get.toLower:
       let this_file = "file://" & getCurrentDir() & "/audio_2019-05-09_16-11-53.ogg"
 
       var document = newVoice(u.message.get.chat.id, this_file)
       document.caption = "🎉 INBA"
       discard await b.send(document)
 
-    if response.text.isSome and (" Xd" in response.text.get or response.text.get.startsWith("Xd ") or response.text.get == "Xd"):
-      var message = newMessage(u.message.get.chat.id, """
-Serio, mało rzeczy mnie triggeruje tak jak to chore „Xd”. Kombinacji x i d można używać na wiele wspaniałych sposobów. Coś cię śmieszy? Stawiasz „xD”. Coś się bardzo śmieszy? Śmiało: „XD”! Coś doprowadza Cię do płaczu ze śmiechu? „XDDD” i załatwione. Uśmiechniesz się pod nosem? „xd”. Po kłopocie.
-A co ma do tego ten bękart klawiaturowej ewolucji, potwór i zakała ludzkiej estetyki - „Xd”? Co to w ogóle ma wyrażać? Martwego człowieka z wywalonym jęzorem? Powiem Ci, co to znaczy. To znaczy, że masz w telefonie włączone zaczynanie zdań dużą literą, ale szkoda Ci klikać capsa na jedno „d” później. Korona z głowy spadnie? Nie sondze. „Xd” to symptom tego, że masz mnie, jako rozmówcę, gdzieś, bo Ci się nawet kliknąć nie chce, żeby mi wysłać poprawny emotikon. Szanujesz mnie? Używaj „xd”, „xD”, „XD”, do wyboru. Nie szanujesz mnie? Okaż to. Wystarczy, że wstawisz to zjebane „Xd” w choć jednej wiadomości. Nie pozdrawiam
-""")
-      message.replyToMessageId = response.messageId
-      discard await b.send(message)
+proc templ(chatsCount: string) {.html_templ.} =
+  html(lang="en"):
+    {. filters = nil .}
+    "<meta charset=\"utf-8\">"
+    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, shrink-to-fit=no\">"
+    {. filters = escape_html() .}
+    head:
+      title: "Lenisław Statystyki"
+      link(rel="stylesheet", href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css")
+    body:
+      {. filters = nil .}
+      """
+      <main role="main" class="container">
+        <h1 class="mt-5">Statystyki</h1>
+        <p class="lead">"""
+      "Lenisław jest na " & chatsCount & " chatach."
+      """</p>
+        </main>
+      """
+      script(src="https://code.jquery.com/jquery-3.3.1.slim.min.js")
+      script(src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js")
+      script(src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js")
+
+proc cb(req: Request) {.async.} =
+  var
+    ss = newStringStream()
+    myTempl = newTempl()
+  myTempl.chatsCount = getChatsCount()
+  myTempl.render(ss)
+  ss.flush()
+  await req.respond(Http200, ss.data)
+
+proc Webserver() {.thread.} =
+  var server = newAsyncHttpServer()
+
+  waitFor server.serve(Port(2137), cb)
+  discard
 
 setupDatabase()
 randomize()
+
+var thread: Thread[void]
+createThread(thread, Webserver)
 
 let bot = newTeleBot(API_KEY)
 
@@ -544,3 +660,5 @@ bot.onUpdate(updateHandler)
 bot.onUnknownCommand(commandHandler)
 bot.onInlineQuery(inlineHandler)
 bot.poll(timeout=300)
+
+thread.joinThread()
