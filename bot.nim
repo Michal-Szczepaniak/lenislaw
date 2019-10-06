@@ -173,6 +173,10 @@ proc downloadImage(document: PhotoSize): Future[string] {.async.} =
     file_content = await responx.body
     fileName = "tmp" & document.fileId
 
+  # debugEcho(url_getfile & file_id)
+  writeFile(fileName, file_content)
+  return fileName
+
 proc downloadDocument(document: Document): Future[string] {.async.} =
   let
     url_getfile = fmt"https://api.telegram.org/bot{API_KEY}/getFile?file_id="
@@ -586,6 +590,12 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 /removeTekst - usun komende teks
 
 napisz inba a sie ztriggeruje
+/snap /snaptop /snapbot - komendy do snapa
+/tvp1 /tvp2 /tvp3 /tvp4 /tvp5 - generuj tvp
+/ss1 /ss2 - generuj superstacje
+/pis - billboard z pis
+/yommoma - żart o twojej starej
+/mi8 /mi9 - zdjęcie zriobione z mi8/mi9
       """))
 
     of "getCommands":
