@@ -123,9 +123,43 @@ proc addChatToStatistics(chatId:int64, chatName:string) =
   try:
     db.exec(sql"INSERT INTO statistics_chats (id,chat_name) VALUES (?,?)", chatId, chatName)
   except:
-    discard 
+    discard
 proc getChatsCount(): string =
   return db.getValue(sql"SELECT count(id) FROM statistics_chats;")
+
+proc getCommands(html: bool): string =
+  var message = "@Pliki$\n"
+  for command in db.fastRows(sql"select command from commands_files"):
+    message &= command[0] & "\n"
+
+  message &= "\n@Stickery$\n"
+  for command in db.fastRows(sql"select command from commands_stickers"):
+    message &= command[0] & "\n"
+
+  message &= "\n@Obrazki$\n"
+  for command in db.fastRows(sql"select command from commands_photos"):
+    message &= command[0] & "\n"
+
+  message &= "\n@Voice$\n"
+  for command in db.fastRows(sql"select command from commands_voices"):
+    message &= command[0] & "\n"
+
+  message &= "\n@Filmy$\n"
+  for command in db.fastRows(sql"select command from commands_videos"):
+    message &= command[0] & "\n"
+
+  message &= "\n@Audio$\n"
+  for command in db.fastRows(sql"select command from commands_audios"):
+    message &= command[0] & "\n"
+
+  message &= "\n@Tekst$\n"
+  for command in db.fastRows(sql"select command from commands_texts"):
+    message &= command[0] & "\n"
+
+  if html:
+    return message.replace("\n", "<br/>").replace("@", "<h2>").replace("$", "</h2>")
+  else:
+    return message.replace("@", "").replace("$", "")
 
 proc downloadImage(document: PhotoSize): Future[string] {.async.} =
   let
@@ -359,37 +393,91 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
     of "pis":
       discard deleteMessageEx(bot, command.message.chat, command.message)
       discard execShellCmd("convert PiS.png -font \"font.ttf\" -pointsize 81 -fill white -draw \"text 190,410 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
-      discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
+
+      var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
+      if command.message.replyToMessage.isSome:
+        message.replyToMessageId = command.message.replyToMessage.get.messageId
+      discard await bot.send(message)
       removeFile($command.message.messageId)
 
     of "tvp1":
       discard deleteMessageEx(bot, command.message.chat, command.message)
       discard execShellCmd("convert tvp.png -font \"font.ttf\" -pointsize 34 -fill white -draw \"text 142,356 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
-      discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
+
+      var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
+      if command.message.replyToMessage.isSome:
+        message.replyToMessageId = command.message.replyToMessage.get.messageId
+      discard await bot.send(message)
       removeFile($command.message.messageId)
 
     of "tvp2":
       discard deleteMessageEx(bot, command.message.chat, command.message)
       discard execShellCmd("convert tvp2.png -font \"font.ttf\" -pointsize 34 -fill white -draw \"text 142,356 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
-      discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
+
+      var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
+      if command.message.replyToMessage.isSome:
+        message.replyToMessageId = command.message.replyToMessage.get.messageId
+      discard await bot.send(message)
       removeFile($command.message.messageId)
 
     of "tvp3":
       discard deleteMessageEx(bot, command.message.chat, command.message)
       discard execShellCmd("convert tvp3.png -font \"font.ttf\" -pointsize 34 -fill white -draw \"text 142,356 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
-      discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
+
+      var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
+      if command.message.replyToMessage.isSome:
+        message.replyToMessageId = command.message.replyToMessage.get.messageId
+      discard await bot.send(message)
       removeFile($command.message.messageId)
 
     of "tvp4":
       discard deleteMessageEx(bot, command.message.chat, command.message)
       discard execShellCmd("convert tvp4.png -font \"Roboto-Bold.ttf\" -pointsize 37 -fill \"#dcdce5\" -draw \"text 195,488 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
-      discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
+
+      var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
+      if command.message.replyToMessage.isSome:
+        message.replyToMessageId = command.message.replyToMessage.get.messageId
+      discard await bot.send(message)
       removeFile($command.message.messageId)
 
     of "tvp5":
       discard deleteMessageEx(bot, command.message.chat, command.message)
       discard execShellCmd("convert tvp5.png -font \"Roboto-Bold.ttf\" -pointsize 37 -fill \"#dcdce5\" -draw \"text 195,488 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
-      discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
+
+      var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
+      if command.message.replyToMessage.isSome:
+        message.replyToMessageId = command.message.replyToMessage.get.messageId
+      discard await bot.send(message)
+      removeFile($command.message.messageId)
+
+    of "ss1":
+      discard deleteMessageEx(bot, command.message.chat, command.message)
+      var
+        text = multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]).split('\n')
+        topText = text[0]
+        bottomText = if len(text) > 1: text[1] else: ""
+
+      discard execShellCmd("convert ss1.png -font \"SemplicitaPro-Bold.otf\" -pointsize 19 -fill \"#1c1c1c\" -draw \"text 263,441 '" & topText & "'\" " & $command.message.messageId & "-tmp")
+      discard execShellCmd("convert " & $command.message.messageId & "-tmp" & " -font \"SemplicitaPro-Medium.otf\" -pointsize 14 -fill \"#1c1c1c\" -draw \"text 263,462 '" & bottomText & "'\" " & $command.message.messageId)
+
+      var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
+      if command.message.replyToMessage.isSome:
+        message.replyToMessageId = command.message.replyToMessage.get.messageId
+      discard await bot.send(message)
+      removeFile($command.message.messageId)
+      removeFile($command.message.messageId & "-tmp")
+
+    of "ss2":
+      discard deleteMessageEx(bot, command.message.chat, command.message)
+      let
+        text = multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")])
+
+      discard execShellCmd("convert ss2.png -font \"SemplicitaPro-Medium.otf\" -pointsize 30 -fill \"#483e25\" -draw \"text 266,455 '" & text & "'\" " & $command.message.messageId)
+
+      var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
+      if command.message.replyToMessage.isSome:
+        message.replyToMessageId = command.message.replyToMessage.get.messageId
+      discard await bot.send(message)
       removeFile($command.message.messageId)
 
     of "mi8":
@@ -401,7 +489,11 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
           fileName = await downloadImage(command.message.replyToMessage.get.photo.get[^1])
 
         discard execShellCmd("convert " & fileName & " \\( mi8.png -resize " & $size & "x" & $size & " \\) -gravity southwest -geometry +10+10 -composite " & $command.message.messageId)
-        discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
+
+        var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
+        if command.message.replyToMessage.isSome:
+          message.replyToMessageId = command.message.replyToMessage.get.messageId
+        discard await bot.send(message)
         removeFile($command.message.messageId)
         removeFile(fileName)
 
@@ -413,7 +505,11 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
           fileName = await downloadImage(command.message.replyToMessage.get.photo.get[^1])
 
         discard execShellCmd("convert " & fileName & " \\( mi9.png -resize " & $size & "x" & $size & " \\) -gravity southwest -geometry +10+10 -composite " & $command.message.messageId)
-        discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
+
+        var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
+        if command.message.replyToMessage.isSome:
+          message.replyToMessageId = command.message.replyToMessage.get.messageId
+        discard await bot.send(message)
         removeFile($command.message.messageId)
         removeFile(fileName)
 
@@ -426,7 +522,11 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
           fileName = await downloadImage(command.message.replyToMessage.get.photo.get[^1])
 
         discard execShellCmd("convert " & fileName & " -fill \"rgba(0, 0, 0, 0.45)\" -draw \"rectangle 0," & $int(round(height/2 - height/18)) & " " & $width & "," & $int(round(height/2 + height/18)) & "\" -pointsize 38 -fill white -gravity center -draw \"text 0,0 '" & multiReplace(command.params, [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
-        discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
+
+        var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
+        if command.message.replyToMessage.isSome:
+          message.replyToMessageId = command.message.replyToMessage.get.messageId
+        discard await bot.send(message)
         removeFile($command.message.messageId)
         removeFile(fileName)
 
@@ -439,7 +539,11 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
           fileName = await downloadImage(command.message.replyToMessage.get.photo.get[^1])
 
         discard execShellCmd("convert " & fileName & " -fill \"rgba(0, 0, 0, 0.45)\" -draw \"rectangle 0," & $int(round(float(height)*0.8 - height/18)) & " " & $width & "," & $int(round(float(height)*0.8 + height/18)) & "\" -pointsize 38 -fill white -gravity south -draw \"text 0,+" & $int(round(float(height)*0.2)-20.0) & " '" & multiReplace(command.params, [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
-        discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
+
+        var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
+        if command.message.replyToMessage.isSome:
+          message.replyToMessageId = command.message.replyToMessage.get.messageId
+        discard await bot.send(message)
         removeFile($command.message.messageId)
         removeFile(fileName)
 
@@ -452,7 +556,11 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
           fileName = await downloadImage(command.message.replyToMessage.get.photo.get[^1])
 
         discard execShellCmd("convert " & fileName & " -fill \"rgba(0, 0, 0, 0.45)\" -draw \"rectangle 0," & $int(round(float(height)*0.2 - height/18)) & " " & $width & "," & $int(round(float(height)*0.2 + height/18)) & "\" -pointsize 38 -fill white -gravity north -draw \"text 0,+" & $int(round(float(height)*0.2)-16.0) & " '" & multiReplace(command.params, [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
-        discard await bot.send(newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId))
+
+        var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
+        if command.message.replyToMessage.isSome:
+          message.replyToMessageId = command.message.replyToMessage.get.messageId
+        discard await bot.send(message)
         removeFile($command.message.messageId)
         removeFile(fileName)
 
@@ -483,35 +591,7 @@ napisz inba a sie ztriggeruje
     of "getCommands":
       discard deleteMessageEx(bot, command.message.chat, command.message)
 
-      var message = "Pliki\n"
-      for command in db.fastRows(sql"select command from commands_files"):
-        message &= command[0] & "\n"
-
-      message &= "\nStickery\n"
-      for command in db.fastRows(sql"select command from commands_stickers"):
-        message &= command[0] & "\n"
-
-      message &= "\nObrazki\n"
-      for command in db.fastRows(sql"select command from commands_photos"):
-        message &= command[0] & "\n"
-
-      message &= "\nVoice\n"
-      for command in db.fastRows(sql"select command from commands_voices"):
-        message &= command[0] & "\n"
-
-      message &= "\nFilmy\n"
-      for command in db.fastRows(sql"select command from commands_videos"):
-        message &= command[0] & "\n"
-
-      message &= "\nAudio\n"
-      for command in db.fastRows(sql"select command from commands_audios"):
-        message &= command[0] & "\n"
-
-      message &= "\nTekst\n"
-      for command in db.fastRows(sql"select command from commands_texts"):
-        message &= command[0] & "\n"
-
-      discard await bot.send(newMessage(chatId, message))
+      discard await bot.send(newMessage(chatId, getCommands(false)))
   discard
 
 proc inlineHandler(b: Telebot, u: InlineQuery) {.async.} =
@@ -592,7 +672,10 @@ proc updateHandler(b: Telebot, u: Update) {.async.} =
   if u.message.isSome:
     var response = u.message.get
 
-    addChatToStatistics(response.chat.id, response.chat.title.get)
+    var chatName = ""
+    if response.chat.title.isSome:
+        chatName = response.chat.title.get
+    addChatToStatistics(response.chat.id, chatName)
 
     if response.document.isSome and response.document.get.mimeType.isSome and response.document.get.mimeType.get == "video/webm" and isFeatureEnabled("webm", response.chat.id):
         let
@@ -610,7 +693,7 @@ proc updateHandler(b: Telebot, u: Update) {.async.} =
       document.caption = "🎉 INBA"
       discard await b.send(document)
 
-proc templ(chatsCount: string) {.html_templ.} =
+proc templ(chatsCount: string, allCommands: string) {.html_templ.} =
   html(lang="en"):
     {. filters = nil .}
     "<meta charset=\"utf-8\">"
@@ -626,9 +709,9 @@ proc templ(chatsCount: string) {.html_templ.} =
         <h1 class="mt-5">Statystyki</h1>
         <p class="lead">"""
       "Lenisław jest na " & chatsCount & " chatach."
-      """</p>
-        </main>
-      """
+      h1: "Lista komend"
+      p: allCommands
+      "</main>"
       script(src="https://code.jquery.com/jquery-3.3.1.slim.min.js")
       script(src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js")
       script(src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js")
@@ -638,6 +721,7 @@ proc cb(req: Request) {.async.} =
     ss = newStringStream()
     myTempl = newTempl()
   myTempl.chatsCount = getChatsCount()
+  myTempl.allCommands = getCommands(true)
   myTempl.render(ss)
   ss.flush()
   await req.respond(Http200, ss.data)
