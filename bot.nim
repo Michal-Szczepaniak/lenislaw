@@ -396,7 +396,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
   case commandText:
     of "pis":
       discard deleteMessageEx(bot, command.message.chat, command.message)
-      discard execShellCmd("convert PiS.png -font \"font.ttf\" -pointsize 81 -fill white -draw \"text 190,410 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
+      discard execShellCmd("convert PiS.png -font \"font.ttf\" -pointsize 81 -fill white -draw 'text 190,410 \"" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "\\\"")]) & "\"' " & $command.message.messageId)
 
       var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
       if command.message.replyToMessage.isSome:
@@ -406,7 +406,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
     of "tvp1":
       discard deleteMessageEx(bot, command.message.chat, command.message)
-      discard execShellCmd("convert tvp.png -font \"font.ttf\" -pointsize 34 -fill white -draw \"text 142,356 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
+      discard execShellCmd("convert tvp.png -font \"font.ttf\" -pointsize 34 -fill white -draw 'text 142,356 \"" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "\\\"")]) & "\"' " & $command.message.messageId)
 
       var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
       if command.message.replyToMessage.isSome:
@@ -416,7 +416,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
     of "tvp2":
       discard deleteMessageEx(bot, command.message.chat, command.message)
-      discard execShellCmd("convert tvp2.png -font \"font.ttf\" -pointsize 34 -fill white -draw \"text 142,356 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
+      discard execShellCmd("convert tvp2.png -font \"font.ttf\" -pointsize 34 -fill white -draw 'text 142,356 \"" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "\\\"")]) & "\"' " & $command.message.messageId)
 
       var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
       if command.message.replyToMessage.isSome:
@@ -426,7 +426,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
     of "tvp3":
       discard deleteMessageEx(bot, command.message.chat, command.message)
-      discard execShellCmd("convert tvp3.png -font \"font.ttf\" -pointsize 34 -fill white -draw \"text 142,356 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
+      discard execShellCmd("convert tvp3.png -font \"font.ttf\" -pointsize 34 -fill white -draw 'text 142,356 \"" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "\\\"")]) & "\"' " & $command.message.messageId)
 
       var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
       if command.message.replyToMessage.isSome:
@@ -436,7 +436,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
     of "tvp4":
       discard deleteMessageEx(bot, command.message.chat, command.message)
-      discard execShellCmd("convert tvp4.png -font \"Roboto-Bold.ttf\" -pointsize 37 -fill \"#dcdce5\" -draw \"text 195,488 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
+      discard execShellCmd("convert tvp4.png -font \"Roboto-Bold.ttf\" -pointsize 37 -fill \"#dcdce5\" -draw 'text 195,488 \"" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "\\\"")]) & "\"' " & $command.message.messageId)
 
       var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
       if command.message.replyToMessage.isSome:
@@ -446,7 +446,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
     of "tvp5":
       discard deleteMessageEx(bot, command.message.chat, command.message)
-      discard execShellCmd("convert tvp5.png -font \"Roboto-Bold.ttf\" -pointsize 37 -fill \"#dcdce5\" -draw \"text 195,488 '" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
+      discard execShellCmd("convert tvp5.png -font \"Roboto-Bold.ttf\" -pointsize 37 -fill \"#dcdce5\" -draw 'text 195,488 \"" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "\\\"")]) & "\"' " & $command.message.messageId)
 
       var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
       if command.message.replyToMessage.isSome:
@@ -457,12 +457,12 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
     of "ss1":
       discard deleteMessageEx(bot, command.message.chat, command.message)
       var
-        text = multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")]).split('\n')
+        text = multiReplace(toUpper(command.params), [("\'", ""), ("\"", "\\\"")]).split('\n')
         topText = text[0]
         bottomText = if len(text) > 1: text[1] else: ""
 
-      discard execShellCmd("convert ss1.png -font \"SemplicitaPro-Bold.otf\" -pointsize 19 -fill \"#1c1c1c\" -draw \"text 263,441 '" & topText & "'\" " & $command.message.messageId & "-tmp")
-      discard execShellCmd("convert " & $command.message.messageId & "-tmp" & " -font \"SemplicitaPro-Medium.otf\" -pointsize 14 -fill \"#1c1c1c\" -draw \"text 263,462 '" & bottomText & "'\" " & $command.message.messageId)
+      discard execShellCmd("convert ss1.png -font \"SemplicitaPro-Bold.otf\" -pointsize 19 -fill \"#1c1c1c\" -draw 'text 263,441 \"" & topText & "\"' " & $command.message.messageId & "-tmp")
+      discard execShellCmd("convert " & $command.message.messageId & "-tmp" & " -font \"SemplicitaPro-Medium.otf\" -pointsize 14 -fill \"#1c1c1c\" -draw 'text 263,462 \"" & bottomText & "\"' " & $command.message.messageId)
 
       var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
       if command.message.replyToMessage.isSome:
@@ -474,9 +474,9 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
     of "ss2":
       discard deleteMessageEx(bot, command.message.chat, command.message)
       let
-        text = multiReplace(toUpper(command.params), [("\'", ""), ("\"", "")])
+        text = multiReplace(toUpper(command.params), [("\'", ""), ("\"", "\\\"")])
 
-      discard execShellCmd("convert ss2.png -font \"SemplicitaPro-Medium.otf\" -pointsize 30 -fill \"#483e25\" -draw \"text 266,455 '" & text & "'\" " & $command.message.messageId)
+      discard execShellCmd("convert ss2.png -font \"SemplicitaPro-Medium.otf\" -pointsize 30 -fill \"#483e25\" -draw 'text 266,455 \"" & text & "\"' " & $command.message.messageId)
 
       var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
       if command.message.replyToMessage.isSome:
@@ -525,7 +525,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
           height = command.message.replyToMessage.get.photo.get[^1].height
           fileName = await downloadImage(command.message.replyToMessage.get.photo.get[^1])
 
-        discard execShellCmd("convert " & fileName & " -fill \"rgba(0, 0, 0, 0.45)\" -draw \"rectangle 0," & $int(round(height/2 - height/18)) & " " & $width & "," & $int(round(height/2 + height/18)) & "\" -pointsize 38 -fill white -gravity center -draw \"text 0,0 '" & multiReplace(command.params, [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
+        discard execShellCmd("convert " & fileName & " -fill \"rgba(0, 0, 0, 0.45)\" -draw \"rectangle 0," & $int(round(height/2 - height/18)) & " " & $width & "," & $int(round(height/2 + height/18)) & "\" -pointsize 38 -fill white -gravity center -draw 'text 0,0 \"" & multiReplace(command.params, [("\'", ""), ("\"", "\\\"")]) & "\"' " & $command.message.messageId)
 
         var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
         if command.message.replyToMessage.isSome:
@@ -542,7 +542,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
           height = command.message.replyToMessage.get.photo.get[^1].height
           fileName = await downloadImage(command.message.replyToMessage.get.photo.get[^1])
 
-        discard execShellCmd("convert " & fileName & " -fill \"rgba(0, 0, 0, 0.45)\" -draw \"rectangle 0," & $int(round(float(height)*0.8 - height/18)) & " " & $width & "," & $int(round(float(height)*0.8 + height/18)) & "\" -pointsize 38 -fill white -gravity south -draw \"text 0,+" & $int(round(float(height)*0.2)-20.0) & " '" & multiReplace(command.params, [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
+        discard execShellCmd("convert " & fileName & " -fill \"rgba(0, 0, 0, 0.45)\" -draw \"rectangle 0," & $int(round(float(height)*0.8 - height/18)) & " " & $width & "," & $int(round(float(height)*0.8 + height/18)) & "\" -pointsize 38 -fill white -gravity south -draw 'text 0,+" & $int(round(float(height)*0.2)-20.0) & " \"" & multiReplace(command.params, [("\'", ""), ("\"", "\\\"")]) & "\"' " & $command.message.messageId)
 
         var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
         if command.message.replyToMessage.isSome:
@@ -559,7 +559,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
           height = command.message.replyToMessage.get.photo.get[^1].height
           fileName = await downloadImage(command.message.replyToMessage.get.photo.get[^1])
 
-        discard execShellCmd("convert " & fileName & " -fill \"rgba(0, 0, 0, 0.45)\" -draw \"rectangle 0," & $int(round(float(height)*0.2 - height/18)) & " " & $width & "," & $int(round(float(height)*0.2 + height/18)) & "\" -pointsize 38 -fill white -gravity north -draw \"text 0,+" & $int(round(float(height)*0.2)-16.0) & " '" & multiReplace(command.params, [("\'", ""), ("\"", "")]) & "'\" " & $command.message.messageId)
+        discard execShellCmd("convert " & fileName & " -fill \"rgba(0, 0, 0, 0.45)\" -draw \"rectangle 0," & $int(round(float(height)*0.2 - height/18)) & " " & $width & "," & $int(round(float(height)*0.2 + height/18)) & "\" -pointsize 38 -fill white -gravity north -draw 'text 0,+" & $int(round(float(height)*0.2)-16.0) & " \"" & multiReplace(command.params, [("\'", ""), ("\"", "\\\"")]) & "\"' " & $command.message.messageId)
 
         var message = newPhoto(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId)
         if command.message.replyToMessage.isSome:
