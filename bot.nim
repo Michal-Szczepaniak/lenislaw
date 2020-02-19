@@ -1,10 +1,14 @@
 import telebot, asyncdispatch, logging, options, os, strutils, db_sqlite, random, strformat, httpclient, json, osproc, math, asynchttpserver, emerald
 
+var L = newConsoleLogger(fmtStr="$levelname, [$time] ")
+addHandler(L)
+
 const API_KEY = slurp("secret.key").strip()
 const USER_ID = 412515181
 
 let db = open("lenek.db", "", "", "")
 let jokes = readFile("jokes.txt").splitLines
+let jokesPl = readFile("jokes_pl.txt").splitLines
 
 proc setupDatabase() =
   db.exec(sql("""CREATE TABLE IF NOT EXISTS commands_files (
@@ -571,6 +575,10 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
     of "yomomma":
       discard deleteMessageEx(bot, command.message.chat, command.message)
       discard await bot.send(newMessage(chatId, jokes.sample))
+
+    of "twojastara":
+      discard deleteMessageEx(bot, command.message.chat, command.message)
+      discard await bot.send(newMessage(chatId, jokesPl.sample))
 
     of "help":
       discard deleteMessageEx(bot, command.message.chat, command.message)
