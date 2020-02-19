@@ -197,6 +197,22 @@ proc downloadDocument(document: Document): Future[string] {.async.} =
   writeFile(fileName, file_content)
   return fileName
 
+proc downloadVideo(document: Video): Future[string] {.async.} =
+  let
+    url_getfile = fmt"https://api.telegram.org/bot{API_KEY}/getFile?file_id="
+    api_file = fmt"https://api.telegram.org/file/bot{API_KEY}/"
+    file_id = document.fileId
+    responz = await newAsyncHttpClient().get(url_getfile & file_id) # file_id > file_path
+    responz_body = await responz.body
+    file_path = parseJson(responz_body)["result"]["file_path"].getStr()
+    responx = await newAsyncHttpClient().get(api_file & file_path)  # file_path > file
+    file_content = await responx.body
+    fileName = "tmp" & document.fileId
+
+  # debugEcho(url_getfile & file_id)
+  writeFile(fileName, file_content)
+  return fileName
+
 proc canBotDelete*(b: TeleBot, m: Message): Future[bool] {.async.} =
     let bot = await b.getMe()
     let botChat = await getChatMember(b, $m.chat.id.int, bot.id)
@@ -579,6 +595,17 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
     of "twojastara":
       discard deleteMessageEx(bot, command.message.chat, command.message)
       discard await bot.send(newMessage(chatId, jokesPl.sample))
+      
+    of "hypercam":
+      if command.message.replyToMessage.get.video.isSome and command.message.replyToMessage.get.video.get.mimeType.isSome and command.message.replyToMessage.get.video.get.mimeType.get.startsWith("video"):
+        let
+          fileName = await downloadVideo(command.message.replyToMessage.get.video.get)
+
+        discard deleteMessageEx(bot, command.message.chat, command.message)
+        discard execShellCmd("timeout 20 ffmpeg -i  " & fileName & " -vf \"drawbox=x=0:y=0:w=260:h=22:color=white:t=max,drawtext=x=2:y=2:fontfile=fixedsys.ttf:fontsize=20:fontcolor=black:text='Unregistered HyperCam 2'\" " & $command.message.messageId & ".mp4")
+        discard await bot.send(newVideo(chatId, "file://" & getCurrentDir() & "/" & $command.message.messageId & ".mp4"))
+        removeFile($command.message.messageId & ".mp4")
+        removeFile(fileName)
 
     of "help":
       discard deleteMessageEx(bot, command.message.chat, command.message)
@@ -699,7 +726,7 @@ proc updateHandler(b: Telebot, u: Update) {.async.} =
         let
           fileName = await downloadDocument(response.document.get)
 
-        discard execShellCmd("ffmpeg -i  " & fileName & " " & $response.messageId & ".mp4")
+        discard execShellCmd("timeout 20 ffmpeg -i  " & fileName & " " & $response.messageId & ".mp4")
         discard await b.send(newVideo(u.message.get.chat.id, "file://" & getCurrentDir() & "/" & $response.messageId & ".mp4"))
         removeFile($response.messageId & ".mp4")
         removeFile(fileName)
