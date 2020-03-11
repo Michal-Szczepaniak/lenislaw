@@ -6,8 +6,9 @@ addHandler(L)
 const API_KEY = slurp("secret.key").strip()
 const USER_ID = 412515181
 
-let jokes = readFile("jokes.txt").splitLines
-let jokesPl = readFile("jokes_pl.txt").splitLines
+let 
+  jokes = readFile("jokes.txt").splitLines
+  jokesPl = readFile("jokes_pl.txt").splitLines
 
 proc downloadImage(document: PhotoSize): Future[string] {.async.} =
   let
@@ -272,7 +273,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
             numbers.add(span.innerText())
 
       var 
-        text = "*Wszystkie przypadki:* " & numbers[0] & " *Zgony:* " & numbers[1] & " *Uleczeni:* " & numbers[2]
+        text = "*Wszystkie przypadki:* " & numbers[0] & " *Zgony:* " & numbers[1] & " *Wyleczeni:* " & numbers[2]
         message = newMessage(chatId, text)
 
       message.parseMode = "markdown"
