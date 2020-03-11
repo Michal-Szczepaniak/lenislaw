@@ -1,4 +1,4 @@
-import telebot, asyncdispatch, logging, options, os, strutils, db_sqlite, random, strformat, httpclient, json, osproc, math, asynchttpserver, emerald
+import telebot, asyncdispatch, logging, options, os, strutils, random, strformat, httpclient, json, osproc, math, asynchttpserver, emerald, db
 
 var L = newConsoleLogger(fmtStr="$levelname, [$time] ")
 addHandler(L)
@@ -6,164 +6,8 @@ addHandler(L)
 const API_KEY = slurp("secret.key").strip()
 const USER_ID = 412515181
 
-let db = open("lenek.db", "", "", "")
 let jokes = readFile("jokes.txt").splitLines
 let jokesPl = readFile("jokes_pl.txt").splitLines
-
-proc setupDatabase() =
-  db.exec(sql("""CREATE TABLE IF NOT EXISTS commands_files (
-              id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
-              command varchar(255) NOT NULL,
-              file varchar(255) NOT NULL)
-            """))
-  db.exec(sql("""CREATE TABLE IF NOT EXISTS commands_stickers (
-              id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
-              command varchar(255) NOT NULL,
-              sticker varchar(255) NOT NULL)
-            """))
-  db.exec(sql("""CREATE TABLE IF NOT EXISTS commands_photos (
-              id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
-              command varchar(255) NOT NULL,
-              photo varchar(255) NOT NULL)
-            """))
-  db.exec(sql("""CREATE TABLE IF NOT EXISTS commands_voices (
-              id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
-              command varchar(255) NOT NULL,
-              voice varchar(255) NOT NULL)
-            """))
-  db.exec(sql("""CREATE TABLE IF NOT EXISTS commands_videos (
-              id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
-              command varchar(255) NOT NULL,
-              video varchar(255) NOT NULL)
-            """))
-  db.exec(sql("""CREATE TABLE IF NOT EXISTS commands_audios (
-              id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
-              command varchar(255) NOT NULL,
-              audio varchar(255) NOT NULL)
-            """))
-  db.exec(sql("""CREATE TABLE IF NOT EXISTS commands_texts (
-              id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
-              command varchar(255) NOT NULL,
-              text TEXT NOT NULL)
-            """))
-  db.exec(sql("""CREATE TABLE IF NOT EXISTS admins (
-              id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
-              user_id INTEGER NOT NULL)
-            """))
-  db.exec(sql("""CREATE TABLE IF NOT EXISTS features_whitelist (
-              id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
-              feature varchar(2) NOT NULL,
-              chat INT NOT NULL)
-            """))
-  db.exec(sql("""CREATE TABLE IF NOT EXISTS statistics_chats (
-              id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL UNIQUE,
-              chat_name varchar(255))
-            """))
-
-proc setFileCommand(c, f: string) =
-  db.exec(sql"INSERT INTO commands_files (command, file) VALUES (?,?)", c, f)
-proc getFileByCommand(c: string): string =
-  result = db.getValue(sql"SELECT file FROM commands_files WHERE command = ?", c)
-proc removeFileCommand(c: string) =
-  db.exec(sql"DELETE FROM commands_files WHERE command = ?", c)
-
-proc setStickerCommand(c, s: string) =
-  db.exec(sql"INSERT INTO commands_stickers (command, sticker) VALUES (?,?)", c, s)
-proc getStickerByCommand(c: string): string =
-  result = db.getValue(sql"SELECT sticker FROM commands_stickers WHERE command = ?", c)
-proc removeStickerCommand(c: string) =
-  db.exec(sql"DELETE FROM commands_stickers WHERE command = ?", c)
-
-proc setPhotoCommand(c, f: string) =
-  db.exec(sql"INSERT INTO commands_photos (command, photo) VALUES (?,?)", c, f)
-proc getPhotoByCommand(c: string): string =
-  result = db.getValue(sql"SELECT photo FROM commands_photos WHERE command = ?", c)
-proc removePhotoCommand(c: string) =
-  db.exec(sql"DELETE FROM commands_photos WHERE command = ?", c)
-
-proc setVoiceCommand(c, f: string) =
-  db.exec(sql"INSERT INTO commands_voices (command, voice) VALUES (?,?)", c, f)
-proc getVoiceByCommand(c: string): string =
-  result = db.getValue(sql"SELECT voice FROM commands_voices WHERE command = ?", c)
-proc removeVoiceCommand(c: string) =
-  db.exec(sql"DELETE FROM commands_voices WHERE command = ?", c)
-
-proc setVideoCommand(c, f: string) =
-  db.exec(sql"INSERT INTO commands_videos (command, video) VALUES (?,?)", c, f)
-proc getVideoByCommand(c: string): string =
-  result = db.getValue(sql"SELECT video FROM commands_videos WHERE command = ?", c)
-proc removeVideoCommand(c: string) =
-  db.exec(sql"DELETE FROM commands_videos WHERE command = ?", c)
-
-proc setAudioCommand(c, f: string) =
-  db.exec(sql"INSERT INTO commands_audios (command, audio) VALUES (?,?)", c, f)
-proc getAudioByCommand(c: string): string =
-  result = db.getValue(sql"SELECT audio FROM commands_audios WHERE command = ?", c)
-proc removeAudioCommand(c: string) =
-  db.exec(sql"DELETE FROM commands_audios WHERE command = ?", c)
-
-proc setTextCommand(c, f: string) =
-  db.exec(sql"INSERT INTO commands_texts (command, text) VALUES (?,?)", c, f)
-proc getTextByCommand(c: string): string =
-  result = db.getValue(sql"SELECT text FROM commands_texts WHERE command = ?", c)
-proc removeTextCommand(c: string) =
-  db.exec(sql"DELETE FROM commands_texts WHERE command = ?", c)
-
-proc addAdmin(id:int) =
-  db.exec(sql"INSERT INTO admins (user_id) VALUES (?)", id)
-proc removeAdmin(id:int) =
-  db.exec(sql"DELETE FROM admins WHERE user_id = ?", id)
-proc isAdmin(id:int): bool =
-  result = db.getValue(sql"SELECT id FROM admins WHERE user_id = ?", id) != ""
-
-proc addFeatureToWhitelist(feature:string, chatId:int64) =
-  db.exec(sql"INSERT INTO features_whitelist (feature,chat) VALUES (?,?)", feature, chatId)
-proc removeFeatureFromWhitelist(feature:string, chatId:int64) =
-  db.exec(sql"DELETE FROM features_whitelist WHERE feature = ? AND chat = ?", feature, chatId)
-proc isFeatureEnabled(feature:string, chatId:int64): bool =
-  result = db.getValue(sql"SELECT id FROM features_whitelist WHERE feature = ? AND chat = ?", feature, chatId) != ""
-
-proc addChatToStatistics(chatId:int64, chatName:string) =
-  try:
-    db.exec(sql"INSERT INTO statistics_chats (id,chat_name) VALUES (?,?)", chatId, chatName)
-  except:
-    discard
-proc getChatsCount(): string =
-  return db.getValue(sql"SELECT count(id) FROM statistics_chats;")
-
-proc getCommands(html: bool): string =
-  var message = "@Pliki$\n"
-  for command in db.fastRows(sql"select command from commands_files"):
-    message &= command[0] & "\n"
-
-  message &= "\n@Stickery$\n"
-  for command in db.fastRows(sql"select command from commands_stickers"):
-    message &= command[0] & "\n"
-
-  message &= "\n@Obrazki$\n"
-  for command in db.fastRows(sql"select command from commands_photos"):
-    message &= command[0] & "\n"
-
-  message &= "\n@Voice$\n"
-  for command in db.fastRows(sql"select command from commands_voices"):
-    message &= command[0] & "\n"
-
-  message &= "\n@Filmy$\n"
-  for command in db.fastRows(sql"select command from commands_videos"):
-    message &= command[0] & "\n"
-
-  message &= "\n@Audio$\n"
-  for command in db.fastRows(sql"select command from commands_audios"):
-    message &= command[0] & "\n"
-
-  message &= "\n@Tekst$\n"
-  for command in db.fastRows(sql"select command from commands_texts"):
-    message &= command[0] & "\n"
-
-  if html:
-    return message.replace("\n", "<br/>").replace("@", "<h2>").replace("$", "</h2>")
-  else:
-    return message.replace("@", "").replace("$", "")
 
 proc downloadImage(document: PhotoSize): Future[string] {.async.} =
   let
@@ -645,7 +489,8 @@ proc inlineHandler(b: Telebot, u: InlineQuery) {.async.} =
     case u.query:
       of "t":
         var results: seq[InlineQueryResultArticle]
-        for command in db.fastRows(sql"select id, command, text from commands_texts"):
+
+        for command in db.getTextCommands():
           var res: InlineQueryResultArticle
           res.kind = "article"
           res.title = command[1]
@@ -655,7 +500,7 @@ proc inlineHandler(b: Telebot, u: InlineQuery) {.async.} =
         discard waitFor b.answerInlineQuery(u.id, results)
       of "a":
         var results: seq[InlineQueryResultCachedAudio]
-        for command in db.fastRows(sql"select id, command, audio from commands_audios LIMIT 1"):
+        for command in db.getAudioCommands():
           var res: InlineQueryResultCachedAudio
           res.kind = "audio"
           res.audioFileId = command[2]
@@ -664,7 +509,7 @@ proc inlineHandler(b: Telebot, u: InlineQuery) {.async.} =
         discard waitFor b.answerInlineQuery(u.id, results)
       of "vi":
         var results: seq[InlineQueryResultCachedVideo]
-        for command in db.fastRows(sql"select id, command, video from commands_videos"):
+        for command in db.getVideoCommands():
           var res: InlineQueryResultCachedVideo
           res.kind = "video"
           res.videoFileId = command[2]
@@ -674,7 +519,7 @@ proc inlineHandler(b: Telebot, u: InlineQuery) {.async.} =
         discard waitFor b.answerInlineQuery(u.id, results)
       of "v":
         var results: seq[InlineQueryResultCachedVoice]
-        for command in db.fastRows(sql"select id, command, voice from commands_voices"):
+        for command in db.getVoiceCommands():
           var res: InlineQueryResultCachedVoice
           res.kind = "voice"
           res.voiceFileId = command[2]
@@ -684,7 +529,7 @@ proc inlineHandler(b: Telebot, u: InlineQuery) {.async.} =
         discard waitFor b.answerInlineQuery(u.id, results)
       of "p":
         var results: seq[InlineQueryResultCachedPhoto]
-        for command in db.fastRows(sql"select id, command, photo from commands_photos"):
+        for command in db.getPhotoCommands():
           var res: InlineQueryResultCachedPhoto
           res.kind = "photo"
           res.photoFileId = command[2]
@@ -693,7 +538,7 @@ proc inlineHandler(b: Telebot, u: InlineQuery) {.async.} =
         discard waitFor b.answerInlineQuery(u.id, results)
       of "s":
         var results: seq[InlineQueryResultCachedSticker]
-        for command in db.fastRows(sql"select id, command, sticker from commands_stickers"):
+        for command in db.getStickerCommands():
           var res: InlineQueryResultCachedSticker
           res.kind = "sticker"
           res.stickerFileId = command[2]
@@ -702,7 +547,7 @@ proc inlineHandler(b: Telebot, u: InlineQuery) {.async.} =
         discard waitFor b.answerInlineQuery(u.id, results)
       of "f":
         var results: seq[InlineQueryResultCacchedDocument]
-        for command in db.fastRows(sql"select id, command, file from commands_files"):
+        for command in db.getFileCommands():
           var res: InlineQueryResultCacchedDocument
           res.kind = "document"
           res.documentFileId = command[2]
