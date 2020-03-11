@@ -616,23 +616,18 @@ proc cb(req: Request) {.async.} =
   ss.flush()
   await req.respond(Http200, ss.data)
 
-proc Webserver() {.thread.} =
-  var server = newAsyncHttpServer()
-
-  waitFor server.serve(Port(2137), cb)
-  discard
-
 setupDatabase()
 randomize()
 
-var thread: Thread[void]
-createThread(thread, Webserver)
+let server = newAsyncHttpServer()
+
+asyncCheck server.serve(Port(2137), cb)
 
 let bot = newTeleBot(API_KEY)
 
 bot.onUpdate(updateHandler)
 bot.onUnknownCommand(commandHandler)
 bot.onInlineQuery(inlineHandler)
-bot.poll(timeout=300)
+asyncCheck bot.pollAsync(timeout=300)
 
-thread.joinThread()
+runForever()
