@@ -1,6 +1,10 @@
 import telebot, asyncdispatch, logging, options, os, strutils, random, strformat, httpclient, json, math, asynchttpserver, emerald, db, htmlparser, xmltree
 
-var L = newConsoleLogger(fmtStr="$levelname, [$time] ")
+var 
+  L = newConsoleLogger(fmtStr="$levelname, [$time] ")
+  coronaLastCases = 0
+  coronaLastDeaths = 0
+  coronaLastRecovered = 0
 addHandler(L)
 
 const API_KEY = slurp("secret.key").strip()
@@ -71,6 +75,17 @@ proc deleteMessageEx(b: Telebot, chat: Chat, message: Message) {.async.} =
     except IOError:
       discard
   discard
+
+proc getDiffSting(last, current: int): string =
+  var symbol = ""
+  if last != current:
+    if (current - last) >= 0:
+      symbol = "+"
+    else:
+      symbol = "-"
+    result = symbol & $(current - last)
+  else:
+    result = ""
 
 proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
   var commandText = command.command
@@ -262,6 +277,7 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
     of "korona", "koronachan", "korona-chan", "corona", "coronachan", "corona-chan":
       var
         numbers: seq[string]
+
       let 
         client = newHttpClient()
         coronachan = client.getContent("https://www.worldometers.info/coronavirus/")
@@ -270,12 +286,18 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
       for node in html.findAll("div"):
         if node.attr("class") == "maincounter-number":
           for span in node.findAll("span"):
-            numbers.add(span.innerText())
+            numbers.add(span.innerText().strip())
 
       var 
-        text = "*Wszystkie przypadki:* " & numbers[0] & " *Zgony:* " & numbers[1] & " *Wyleczeni:* " & numbers[2]
+        coronaCurrentCases = replace(numbers[0], ",", "").parseInt()
+        coronaCurrentDeaths = replace(numbers[1], ",", "").parseInt()
+        coronaCurrentRecovered = replace(numbers[2], ",", "").parseInt()
+        text = "*Wszystkie przypadki:* " & numbers[0] & getDiffSting(coronaLastCases, coronaCurrentCases) & " *Zgony:* " & numbers[1] & getDiffSting(coronaLastDeaths, coronaCurrentDeaths) & " *Wyleczeni:* " & numbers[2] & getDiffSting(coronaLastRecovered, coronaCurrentRecovered)
         message = newMessage(chatId, text)
 
+      coronaLastCases = coronaCurrentCases
+      coronaLastDeaths = coronaCurrentDeaths
+      coronaLastRecovered = coronaCurrentRecovered
       message.parseMode = "markdown"
       if command.message.replyToMessage.isSome:
         message.replyToMessageId = command.message.replyToMessage.get.messageId
