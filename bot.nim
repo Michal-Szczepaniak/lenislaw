@@ -500,7 +500,9 @@ napisz inba a sie ztriggeruje
 /pis - billboard z pis
 /yommoma - żart o twojej starej
 /mi8 /mi9 - zdjęcie zriobione z mi8/mi9
-      """))
+/twojastara - żart o twojej starej
+/hypercam - HyperCam na video
+/koronachan, /korona, /korona-chan, /corona, /coronachan, /corona-chan - Info o korona-chan"""))
 
     of "getCommands":
       discard deleteMessageEx(bot, command.message.chat, command.message)
