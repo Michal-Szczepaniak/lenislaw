@@ -1,4 +1,4 @@
-import telebot, asyncdispatch, logging, options, os, strutils, random, strformat, httpclient, json, osproc, math, asynchttpserver, emerald, db
+import telebot, asyncdispatch, logging, options, os, strutils, random, strformat, httpclient, json, math, asynchttpserver, emerald, db, htmlparser, xmltree
 
 var L = newConsoleLogger(fmtStr="$levelname, [$time] ")
 addHandler(L)
@@ -258,6 +258,31 @@ proc commandHandler(bot: Telebot, command: CatchallCommand) {.async.} =
 
 
   case commandText:
+    of "korona", "koronachan", "korona-chan", "corona", "coronachan", "corona-chan":
+      var
+        numbers: seq[string]
+      let 
+        client = newHttpClient()
+        coronachan = client.getContent("https://www.worldometers.info/coronavirus/")
+        html = parseHtml(coronachan)
+
+      for node in html.findAll("div"):
+        if node.attr("class") == "maincounter-number":
+          for span in node.findAll("span"):
+            numbers.add(span.innerText())
+
+      var 
+        text = "*Wszystkie przypadki:* " & numbers[0] & " *Zgony:* " & numbers[1] & " *Uleczeni:* " & numbers[2]
+        message = newMessage(chatId, text)
+
+      message.parseMode = "markdown"
+      if command.message.replyToMessage.isSome:
+        message.replyToMessageId = command.message.replyToMessage.get.messageId
+
+      discard deleteMessageEx(bot, command.message.chat, command.message)
+      discard await bot.send(message)
+
+
     of "pis":
       discard deleteMessageEx(bot, command.message.chat, command.message)
       discard execShellCmd("convert PiS.png -font \"font.ttf\" -pointsize 81 -fill white -draw 'text 190,410 \"" & multiReplace(toUpper(command.params), [("\'", ""), ("\"", "\\\"")]) & "\"' " & $command.message.messageId)
