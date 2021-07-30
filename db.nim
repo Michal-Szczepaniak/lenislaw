@@ -136,6 +136,10 @@ proc removeFeatureFromWhitelist*(feature:string, chatId:int64) =
 proc isFeatureEnabled*(feature:string, chatId:int64): bool =
   result = db.getValue(sql"SELECT id FROM features_whitelist WHERE feature = ? AND chat = ?", feature, chatId) != ""
 
+iterator getChats*(): Row =
+  for row in db.fastRows(sql"SELECT id FROM statistics_chats;"):
+    yield row
+
 proc addChatToStatistics*(chatId:int64, chatName:string) =
   try:
     db.exec(sql"INSERT INTO statistics_chats (id,chat_name) VALUES (?,?)", chatId, chatName)
