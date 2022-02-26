@@ -529,7 +529,7 @@ proc commandHandler(bot: Telebot, command: Command): Future[bool] {.async.} =
             discard
 
         let
-          outputs = execProcess("/usr/bin/face_detection " & fileName).strip().split('\n')
+          outputs = execProcess("/usr/bin/face_detection --cpus 2 " & fileName).strip().split('\n')
 
         debugEcho(orientation)
         debugEcho(sizeRatio)
@@ -547,7 +547,7 @@ proc commandHandler(bot: Telebot, command: Command): Future[bool] {.async.} =
             height = float(parseInt(output[3]) - parseInt(output[1]))
             faceWidth = width*faceOffsetRatioWidth
             faceHeight = faceWidth*1.234806629834254
-            faceXOffset = if orientation == "left": 0 else: int(faceWidth-width)
+            faceXOffset = if orientation == "left": int((faceWidth*1.1)-faceWidth) else: int(faceWidth-width)
             resizedYOffset = int(abs(height - faceHeight))
             x1 = parseInt(output[2])
             x2 = parseInt(output[4])
