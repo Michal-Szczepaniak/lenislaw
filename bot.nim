@@ -511,12 +511,28 @@ proc commandHandler(bot: Telebot, command: Command): Future[bool] {.async.} =
     of "nk":
       if command.message.replyToMessage.isSome and command.message.replyToMessage.get.photo.isSome:
         discard deleteMessageEx(bot, command.message.chat, command.message)
+
+
         let
           size = command.message.replyToMessage.get.photo.get[^1].width/3
           fileName = await downloadImage(command.message.replyToMessage.get.photo.get[^1])
+          params = command.params.split(' ')
+          orientation = params[0]
 
-        let 
+        var
+          sizeRatio = 1.5
+
+        if params.len >= 2:
+          try:
+            sizeRatio = parseFloat(params[1])
+          except ValueError:
+            discard
+
+        let
           outputs = execProcess("/usr/bin/face_detection " & fileName).strip().split('\n')
+
+        debugEcho(orientation)
+        debugEcho(sizeRatio)
         copyFile(fileName, $command.message.messageId)
 
         for unparsedOutput in outputs:
@@ -527,14 +543,14 @@ proc commandHandler(bot: Telebot, command: Command): Future[bool] {.async.} =
           let  
             width = float(parseInt(output[2]) - parseInt(output[4]))
             height = float(parseInt(output[3]) - parseInt(output[1]))
-            offsetLeft = width*1.5 - width
-            offsetTop = height*1.5 - height
+            offsetLeft = width*sizeRatio - width
+            offsetTop = height*sizeRatio - height
             offsetWidth = width+offsetLeft
             offsetHeight = height+offsetTop
             left = float(parseInt(output[4]))-offsetLeft/4
             top = float(parseInt(output[1]))-offsetTop
 
-          discard execShellCmd("convert " & $command.message.messageId & " \\( papaj.png -resize " & $offsetWidth & "x" & $offsetHeight & " \\) -gravity northwest -geometry +" & $left & "+" & $top & " -composite " & $command.message.messageId)
+          discard execShellCmd("convert " & $command.message.messageId & " \\( papaj.png -resize " & $offsetWidth & "x" & $offsetHeight & (if orientation == "left": " -flop" else: "") & " \\) -gravity northwest -geometry +" & $left & "+" & $top & " -composite " & $command.message.messageId)
 
         var replyId = 0
         if command.message.replyToMessage.isSome:
