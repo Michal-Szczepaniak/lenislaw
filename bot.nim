@@ -540,17 +540,21 @@ proc commandHandler(bot: Telebot, command: Command): Future[bool] {.async.} =
           if output.len < 5:
             continue
 
-          let  
+          let
+            faceOffsetRatioWidth = 1.297491039426523
+            faceOffsetRatioHeight = 1.625454545454545
             width = float(parseInt(output[2]) - parseInt(output[4]))
             height = float(parseInt(output[3]) - parseInt(output[1]))
-            offsetLeft = width*sizeRatio - width
-            offsetTop = height*sizeRatio - height
-            offsetWidth = width+offsetLeft
-            offsetHeight = height+offsetTop
-            left = float(parseInt(output[4]))-offsetLeft/4
-            top = float(parseInt(output[1]))-offsetTop
+            faceWidth = width*faceOffsetRatioWidth
+            faceHeight = faceWidth*1.234806629834254
+            faceXOffset = if orientation == "left": 0 else: int(faceWidth-width)
+            resizedYOffset = int(abs(height - faceHeight))
+            x1 = parseInt(output[2])
+            x2 = parseInt(output[4])
+            y1 = parseInt(output[1])
+            y2 = parseInt(output[3])
 
-          discard execShellCmd("convert " & $command.message.messageId & " \\( papaj.png -resize " & $offsetWidth & "x" & $offsetHeight & (if orientation == "left": " -flop" else: "") & " \\) -gravity northwest -geometry +" & $left & "+" & $top & " -composite " & $command.message.messageId)
+          discard execShellCmd("convert " & $command.message.messageId & " \\( papaj.png -resize " & $faceWidth & (if orientation == "left": " -flop" else: "") & " \\) -gravity northwest -geometry +" & $(x2-faceXOffset) & "+" & $(y1-resizedYOffset) & " -composite " & $command.message.messageId)
 
         var replyId = 0
         if command.message.replyToMessage.isSome:
